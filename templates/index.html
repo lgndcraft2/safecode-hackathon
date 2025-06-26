@@ -21,28 +21,36 @@
         <img id="video" src="{{ url_for('video_feed') }}">
         <canvas id="overlay"></canvas>
     </div>
-
+    <video id="video" autoplay playsinline></video>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-        const socket = io();
         const video = document.getElementById('video');
-        const overlay = document.getElementById('overlay');
-        const ctx = overlay.getContext('2d');
+        const socket = io();
 
-        video.onload = () => {
-            overlay.width = video.clientWidth;
-            overlay.height = video.clientHeight;
-        };
+        // Request webcam access
+        navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            video.srcObject = stream;
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Capture frames periodically
+            setInterval(() => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            
+            // Convert frame to base64 image
+            const frameData = canvas.toDataURL('image/jpeg', 0.7); // 0.7 = compression level
+            socket.emit('frame', frameData);
+            }, 100); // Send 10 frames per second
+        })
+        .catch(err => console.error('Camera Error:', err));
 
+        // Handle detections from backend
         socket.on('detection', detections => {
-            ctx.clearRect(0, 0, overlay.width, overlay.height);
-            detections.forEach(d => {
-                ctx.strokeStyle = d.label === "cell phone" ? 'red' : 'lime';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(d.x, d.y, d.w, d.h);
-                ctx.font = "14px Arial";
-                ctx.fillStyle = d.label === "cell phone" ? 'red' : 'lime';
-                ctx.fillText(`${d.label} (${(d.confidence * 100).toFixed(1)}%)`, d.x, d.y - 5);
-            });
+            console.log(detections);
         });
     </script>
 </body>
