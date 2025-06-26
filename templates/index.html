@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YOLO Face & Phone Detection</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        #video-container {
+            position: relative;
+            display: inline-block;
+        }
+        #video, #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <h2>Live YOLO Detection</h2>
+    <div id="video-container">
+        <img id="video" src="{{ url_for('video_feed') }}">
+        <canvas id="overlay"></canvas>
+    </div>
+
+    <script>
+        const socket = io();
+        const video = document.getElementById('video');
+        const overlay = document.getElementById('overlay');
+        const ctx = overlay.getContext('2d');
+
+        video.onload = () => {
+            overlay.width = video.clientWidth;
+            overlay.height = video.clientHeight;
+        };
+
+        socket.on('detection', detections => {
+            ctx.clearRect(0, 0, overlay.width, overlay.height);
+            detections.forEach(d => {
+                ctx.strokeStyle = d.label === "cell phone" ? 'red' : 'lime';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(d.x, d.y, d.w, d.h);
+                ctx.font = "14px Arial";
+                ctx.fillStyle = d.label === "cell phone" ? 'red' : 'lime';
+                ctx.fillText(`${d.label} (${(d.confidence * 100).toFixed(1)}%)`, d.x, d.y - 5);
+            });
+        });
+    </script>
+</body>
+</html>
